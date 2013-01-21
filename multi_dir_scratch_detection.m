@@ -16,14 +16,18 @@ function multi_dir_scratch_detection(img)
 	
 
 	% 12 binary image are stored in cell array
-	
+	band_pass_imgs
 
 	%%%% step 2: Line Direction Detection
-	
-	for b_img_idx = 1:12
-
-
+	accumulator = 0;
+	for bp_imgs_idx = 1:12
+		h_img = hough(band_pass_imgs{bp_imgs_idx});
+		accumulator = accumulator + h_img;
 	end
+	
+
+
+
 	%%%% step 3: Contour Drawing
 
 
