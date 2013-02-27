@@ -16,7 +16,7 @@ rhoResolution = 1;
 
     theta = linspace(-90, 0, ceil(90/thetaResolution) + 1);
     theta = [theta -fliplr(theta(2:end - 1))];
-    theta = theta * 2 * pi / 360;
+
     
 % constract rho
 
@@ -40,33 +40,39 @@ rhoResolution = 1;
 %Example: cosine(3,:) is 2*cosine(0 to pi)
 %         cosine(:,1) is (0 to width of image)*cosine(0)
 
-    cosine = (0:N-1)'*cos(theta); %Matrix Outerproduct  
-    sine = (0:M-1)'*sin(theta); %Matrix Outerproduct
+    cosine = (0:M-1)'*cos(theta * pi / 180); %Matrix Outerproduct  
+    sine = (0:N-1)'*sin(theta * pi / 180); %Matrix Outerproduct
     
     %%%% modified part -- weighted hough
     n = length(Img(:));
-    %accumulator(:,:) = spdiags(Img(:), 0, n, n) * (cosine(xIndicies,:) + sine(yIndicies,:));
-    accumulator(:,:) = (cosine(xIndicies,:) + sine(yIndicies,:));
+    
+    accumulator(:,:) = cosine(yIndicies,:) + sine(xIndicies,:);
+    houghSpace = zeros(length(rho), length(theta));
+    
     %Scan over the thetas and bin the rhos 
+   
     %{
     for i = (1:length(theta))
         houghSpace(:,i) = hist(accumulator(:,i),rho);
     end
     %}
-    houghSpace = zeros(length(rho), length(theta));
+    
+   
+    
     for i = (1:length(theta))
-        [tmp rhobin] = histc(accumulator(:,i), rho);
+        [~, rhobin] = histc(accumulator(:,i), rho);
         %valid_idx = rhobin > 0;
 
-		%%% known bug: the dimension of the return of accumarray is not correct!
         bin = accumarray(rhobin(:), Img(:));
         l = length(rho) - length(bin);
         houghSpace(:,i) = [bin; zeros(l, 1)];
         
     end    
-
+   
+  
     
    
+    figure
     pcolor(theta,rho,houghSpace/max(houghSpace(:)));
     shading flat;
     title('Hough Transform');
