@@ -6,8 +6,8 @@ if max(Img(:) > 1)
 end
 
 % default resolution
-thetaResolution = 1;
-rhoResolution = 1;
+thetaResolution = 0.5;
+rhoResolution = 0.5;
 
 
 [M,N] = size(Img);
@@ -71,7 +71,7 @@ rhoResolution = 1;
    
   
     
-   
+    %{
     figure
     pcolor(theta,rho,houghSpace/max(houghSpace(:)));
     shading flat;
@@ -79,7 +79,7 @@ rhoResolution = 1;
     xlabel('Theta (radians)');
     ylabel('Rho (pixels)');
     colormap('gray');
-    
+    %}
 %{
 % rho's
 cosine = (0:N-1)' * cos(theta);
