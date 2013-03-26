@@ -1,7 +1,6 @@
 function out = pointwise_cooccurence(img, nbrsize)
 % !! input is sharp image
 
-
 % normalize the image
 if max(img(:)) > 1
     img = double(img) / 255;
