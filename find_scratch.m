@@ -9,7 +9,6 @@ num_lines = length(lines);
 [M, N] = size(img);
 
 out = zeros(size(img));
-point = zeros(1, 2);
 stack = zeros(stack_size, 2);
 
 for line_id = 1:num_lines % each line
@@ -39,7 +38,6 @@ for line_id = 1:num_lines % each line
             stack(1, :) = center;
 			s_ptr = 1;
 			
-            fprintf(1, 'center = (%d, %d), s_ptr = %d\n', center(1), center(2), s_ptr);
 			while true
 				% get the scratch point from the stack, and collect all the connected component.
 				point = stack(s_ptr, :);
@@ -56,6 +54,7 @@ for line_id = 1:num_lines % each line
 							 point(1) - 1, point(2)];
                 num_nbr = 4;
                 %}
+                
                 % 8-connected neighborhoods
                 neighbors = [point(1), point(2) + 1;
 							 point(1), point(2) - 1;
@@ -73,10 +72,16 @@ for line_id = 1:num_lines % each line
 						continue;
                     end
                     if sharpImg(neighbors(pt, 2), neighbors(pt, 1)) == On
+                        
+                        % check stack size
+                        if s_ptr == stack_size
+                           stack_size = stack_size * 2;
+                           stack = [stack; zeros(size(stack))];
+                        end
+                        
                         sharpImg(neighbors(pt, 2), neighbors(pt, 1)) = Visited;
                         s_ptr = s_ptr + 1;
 						stack(s_ptr, :) = neighbors(pt, :);
-                        fprintf(1, '(i, j) = (%d, %d), s_ptr = %d\n', neighbors(pt, 2), neighbors(pt, 1), s_ptr);
                     end
                 end
 				
