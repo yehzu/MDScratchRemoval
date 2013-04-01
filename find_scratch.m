@@ -1,39 +1,101 @@
 function out = find_scratch(lines, img, sharpImg)
 % may use cross  corelation
+stack_size = 1000;
+On = 1;
+Off = 0;
+Visited = 0.2;
 
 num_lines = length(lines);
 [M, N] = size(img);
 
-out = zero(size(img));
+out = zeros(size(img));
+point = zeros(1, 2);
+stack = zeros(stack_size, 2);
 
 for line_id = 1:num_lines % each line
     p1 = lines(line_id).point1;
     p2 = lines(line_id).point2;
-    dir = p2 - p1 / norm(p2 - p1);
+    dir = (p2 - p1) / norm(p2 - p1);
     normal = [dir(2), -dir(1)];
-    len = [0:1:norm(p2 - p1), norm(p2 - p1)]; % small bug
+    len = [0:1:norm(p2 - p1), norm(p2 - p1)]; % small bug (twice norm(p2 - p1))
     
-    potential_scratch_pixels = - ones(4 * sqrt(M^2 + N^2), 2); % initial memory size is 4 * diag of image
+    potential_scratch_pixels = - ones(ceil(4 * sqrt(M^2 + N^2)), 2); % initial memory size is 4 * diag of image
     
     k = 1;
     for l = len
-        center = p1 + l * dir;
-        if sharpImg(center(1), center(2)) == 1 % is scratch point
-            sharpImg(center(1), center(2)) = 0;
-            potential_scratch_pixels(k, :) = center;
+        center = ceil(p1 + l * dir);
+        
+        % boundary detection
+        if sum(center <= 0) > 0 || sum(center(2) > M) > 0 || sum(center(1) > N) > 0
+			continue;
+        end
+        
+        if sharpImg(center(2), center(1)) == On % is scratch point
             
             % ---
-                %recursive part, find connected component
-            
+			%recursive part, find connected component
+			
+            sharpImg(center(2), center(1)) = Visited;
+            stack(1, :) = center;
+			s_ptr = 1;
+			
+            fprintf(1, 'center = (%d, %d), s_ptr = %d\n', center(1), center(2), s_ptr);
+			while true
+				% get the scratch point from the stack, and collect all the connected component.
+				point = stack(s_ptr, :);
+				s_ptr = s_ptr - 1;
+                
+				potential_scratch_pixels(k, :) = center;
+				k = k + 1;
+                   
+                %{
+				% 4-connected neighborhoods 
+				neighbors = [point(1), point(2) + 1;
+							 point(1), point(2) - 1;
+							 point(1) + 1, point(2);
+							 point(1) - 1, point(2)];
+                num_nbr = 4;
+                %}
+                % 8-connected neighborhoods
+                neighbors = [point(1), point(2) + 1;
+							 point(1), point(2) - 1;
+							 point(1) + 1, point(2);
+							 point(1) - 1, point(2);
+                             point(1) + 1, point(2) + 1;
+							 point(1) - 1, point(2) - 1;
+							 point(1) + 1, point(2) - 1;
+							 point(1) - 1, point(2) + 1];
+                num_nbr = 8;
+                
+				
+                for pt = 1:num_nbr
+                    if sum(neighbors(pt, :) <= 0) > 0 || sum(neighbors(pt, 2) > M) > 0 || sum(neighbors(pt, 1) > N) > 0
+						continue;
+                    end
+                    if sharpImg(neighbors(pt, 2), neighbors(pt, 1)) == On
+                        sharpImg(neighbors(pt, 2), neighbors(pt, 1)) = Visited;
+                        s_ptr = s_ptr + 1;
+						stack(s_ptr, :) = neighbors(pt, :);
+                        fprintf(1, '(i, j) = (%d, %d), s_ptr = %d\n', neighbors(pt, 2), neighbors(pt, 1), s_ptr);
+                    end
+                end
+				
+                if s_ptr == 0
+                    break;
+                end
+			end  % end while
             % ---
-            
             k = k + 1;
         end
     end
     
-    
+    %sharpImg
+	imshow(sharpImg);
+	waitforbuttonpress
+
     k = k - 1;
     
+	% check each side of the scratch
     for point_id = 1:k
         % should be modified, neighbor pixels
         p_pix = potential_scratch_pixels(point_id);
