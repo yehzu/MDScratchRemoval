@@ -1,7 +1,7 @@
 function out = find_scratch(lines, img, sharpImg)
 % may use cross corelation
 stack_size = 1000;
-cross_correlation_nbr = 6;
+cross_correlation_nbr = 10;
 On = 1;
 Visited = 0.2;
 
@@ -97,7 +97,6 @@ for line_id = 1:num_lines % each line
 
     k = k - 1;
     
-    potential_scratch_pixels
 	% check each side of the scratch
     for point_id = 1:k
         % should be modified, neighbor pixels
@@ -107,7 +106,6 @@ for line_id = 1:num_lines % each line
     
 end
 
-imshow(out)
 end %end function
 
 function bool = is_scratch_pixel(img, p_pix, normal, cross_correlation_nbr)
@@ -115,20 +113,21 @@ function bool = is_scratch_pixel(img, p_pix, normal, cross_correlation_nbr)
     pattern = zeros(cross_correlation_nbr, 2);
     [M, N] = size(img);
     
-    for dir = [-1 1]
-        cur_dir = dir * normal; 
+    for dir = 1:2 % two side
+        
+        cur_dir = (-1)^dir * normal; 
 
         for l = len
             pt = round(p_pix + l * cur_dir);
-            if sum(pt < 1) > 0 || pt(2) > M || pt(1) > N 
+            if sum(pt < 1) > 0 || pt(2) > M || pt(1) > N  % check boundary
                 continue;
             end
-            pattern(l) = img(pt(2), pt(1));
+            pattern(l, dir) = img(pt(2), pt(1));
         end
        
     end
     
-    if corrcoef(pattern(:, 1), pattern(:, 2)) > 0.5
+    if abs(corrcoef(pattern(:, 1), pattern(:, 2))) > 0.1
         bool = true;
     else 
         bool = false;
