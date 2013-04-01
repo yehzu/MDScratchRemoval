@@ -1,6 +1,7 @@
 function out = find_scratch(lines, img, sharpImg)
 sharpImg = double(sharpImg);
 % may use cross corelation
+distance_constraint = 5;
 stack_size = 1000;
 cross_correlation_nbr = 10;
 On = 1;
@@ -44,7 +45,7 @@ for line_id = 1:num_lines % each line
 				% get the scratch point from the stack, and collect all the connected component.
 				point = stack(s_ptr, :);
 				s_ptr = s_ptr - 1;
-                fprintf(1, 'point = (%d, %d)\n', point(1), point(2)); 
+                 
 				potential_scratch_pixels(k, :) = point;
 				k = k + 1;
                    
@@ -73,6 +74,12 @@ for line_id = 1:num_lines % each line
                     if sum(neighbors(pt, :) <= 0) > 0 || sum(neighbors(pt, 2) > M) > 0 || sum(neighbors(pt, 1) > N) > 0
 						continue;
                     end
+                    
+                    u = neighbors(pt, :) - p1;
+                    if sqrt(norm(u)^2 - (u * dir')^2) > distance_constraint
+                       continue; 
+                    end
+                    
                     if sharpImg(neighbors(pt, 2), neighbors(pt, 1)) == On
                         
                         % check stack size
