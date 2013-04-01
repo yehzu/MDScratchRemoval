@@ -1,9 +1,10 @@
 function out = find_scratch(lines, img, sharpImg)
+sharpImg = double(sharpImg);
 % may use cross corelation
 stack_size = 1000;
 cross_correlation_nbr = 10;
 On = 1;
-Visited = 0.2;
+Visited = 0.5;
 
 
 num_lines = length(lines);
@@ -43,7 +44,7 @@ for line_id = 1:num_lines % each line
 				% get the scratch point from the stack, and collect all the connected component.
 				point = stack(s_ptr, :);
 				s_ptr = s_ptr - 1;
-                
+                fprintf(1, 'point = (%d, %d)\n', point(1), point(2)); 
 				potential_scratch_pixels(k, :) = point;
 				k = k + 1;
                    
