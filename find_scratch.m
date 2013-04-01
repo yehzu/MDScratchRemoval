@@ -1,9 +1,10 @@
 function out = find_scratch(lines, img, sharpImg)
-% may use cross  corelation
+% may use cross corelation
 stack_size = 1000;
+cross_correlation_nbr = 6;
 On = 1;
-Off = 0;
 Visited = 0.2;
+
 
 num_lines = length(lines);
 [M, N] = size(img);
@@ -22,7 +23,7 @@ for line_id = 1:num_lines % each line
     
     k = 1;
     for l = len
-        center = ceil(p1 + l * dir);
+        center = round(p1 + l * dir);
         
         % boundary detection
         if sum(center <= 0) > 0 || sum(center(2) > M) > 0 || sum(center(1) > N) > 0
@@ -43,7 +44,7 @@ for line_id = 1:num_lines % each line
 				point = stack(s_ptr, :);
 				s_ptr = s_ptr - 1;
                 
-				potential_scratch_pixels(k, :) = center;
+				potential_scratch_pixels(k, :) = point;
 				k = k + 1;
                    
                 %{
@@ -90,22 +91,46 @@ for line_id = 1:num_lines % each line
                 end
 			end  % end while
             % ---
-            k = k + 1;
+            
         end
     end
-    
-    %sharpImg
-	imshow(sharpImg);
-	waitforbuttonpress
 
     k = k - 1;
     
+    potential_scratch_pixels
 	% check each side of the scratch
     for point_id = 1:k
         % should be modified, neighbor pixels
-        p_pix = potential_scratch_pixels(point_id);
-        out(p_pix(1), p_pix(2)) = is_scratch_pixel(img, p_pix, normal);
-        
+        p_pix = potential_scratch_pixels(point_id, :);
+        out(p_pix(2), p_pix(1)) = is_scratch_pixel(img, p_pix, normal, cross_correlation_nbr);
     end
     
+end
+
+imshow(out)
+end %end function
+
+function bool = is_scratch_pixel(img, p_pix, normal, cross_correlation_nbr)
+    len = 1:cross_correlation_nbr;
+    pattern = zeros(cross_correlation_nbr, 2);
+    [M, N] = size(img);
+    
+    for dir = [-1 1]
+        cur_dir = dir * normal; 
+
+        for l = len
+            pt = round(p_pix + l * cur_dir);
+            if sum(pt < 1) > 0 || pt(2) > M || pt(1) > N 
+                continue;
+            end
+            pattern(l) = img(pt(2), pt(1));
+        end
+       
+    end
+    
+    if corrcoef(pattern(:, 1), pattern(:, 2)) > 0.5
+        bool = true;
+    else 
+        bool = false;
+    end
 end
