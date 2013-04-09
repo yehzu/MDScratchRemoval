@@ -58,6 +58,11 @@ for jj = 1:N
                - DP_table(min(ii + nbrsize, M), max(jj - nbrsize, 1), :) ...
                + DP_table(max(ii - nbrsize, 1), max(jj - nbrsize, 1), :);
 
+        if (ii - nbrsize < 1) || (jj - nbrsize < 1) || (ii + nbrsize > M) || (jj + nbrsize > N)
+            area = (min(ii + nbrsize, M) - max(ii - nbrsize, 1)) * (min(jj + nbrsize, N) - max(jj - nbrsize, 1));
+            glcm = glcm * (2 * nbrsize) ^ 2 / area; % normalize boundary featrue
+        end
+    
         f(k, :) = glcm(:);
         k = k+1;
     end
@@ -69,19 +74,26 @@ fprintf(1, 'Clustering\n');
 idx = [];
 while isempty(idx)
     try
-        [idx ~] = kmeans(f, k);
+        [idx cent] = kmeans(f, k);
     catch err
     end
 end
 
 v = zeros(k, 1);
+cent
 for i = 1:k
+   testimg = zeros(size(img));
+   testimg(idx==i) = 1;
+   imshow(testimg);
+   mean(testimg(:))
+   waitforbuttonpress
    val = img(idx == i);
    v(i) = sqrt(var(val(:))) / mean(val(:)); % coefficient of variance
 end
 
+id = find(v(2, :) == max(v(2, :)));
 [~, sid] = sort(v);
-out(idx ~= sid(3)) = 1;
+out(idx ~= id) = 1;
 
 end
 
