@@ -59,7 +59,7 @@ smooth_img = img;
         % --- step 2 ---
         %%% remove texture
         DEBUG_SHOW(sharpImg >= 0.1, 'before', true);
-        texture_area = pointwise_cooccurence(sharpImg >= 0.2, texture_block_size);
+        texture_area = pointwise_cooccurence(sharpImg >= 0.1, texture_block_size);
         DEBUG_SHOW(texture_area, 'texture area', true);
         
         sharpImg(texture_area == 1) = 0; % remove

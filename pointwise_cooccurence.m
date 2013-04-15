@@ -60,7 +60,7 @@ for jj = 1:N
 
         if (ii - nbrsize < 1) || (jj - nbrsize < 1) || (ii + nbrsize > M) || (jj + nbrsize > N)
             area = (min(ii + nbrsize, M) - max(ii - nbrsize, 1)) * (min(jj + nbrsize, N) - max(jj - nbrsize, 1));
-            glcm = glcm * (2 * nbrsize) ^ 2 / area; % normalize boundary featrue
+            glcm = glcm * (2 * nbrsize + 1) ^ 2 / area; % normalize boundary featrue
         end
     
         f(k, :) = glcm(:);
@@ -76,27 +76,96 @@ while isempty(idx)
     try
         [idx cent] = kmeans(f, k);
     catch err
+        err.identifier
     end
 end
+cent
+%{
+
 
 v = zeros(k, 1);
-cent
+
+gradidx = zeros(k, 1);
+[mag, dir] = imgradient(img, 'CentralDifference');
+
+
 for i = 1:k
-   testimg = zeros(size(img));
-   testimg(idx==i) = 1;
-   imshow(testimg);
-   mean(testimg(:))
+   area = sum(idx == i);
+   % check the area
+   if area > M*N / 3 
+       out(idx == i) = 0;
+       fprintf(1, 'texture %d is excluded', i);
+   end
+end
+%}
+%{
+for i = 1:k
+   %gradidx(i) = sum(mag(idx == i))
+
+%   sum(mag(idx == i)) / sum(idx == i)
+%   var(img(idx == i))
+    var(dir(idx == i))
+    figure
+   hist(dir(idx == i) .* mag(idx==i))
+   figure
+   tmp = zeros(size(img));
+   tmp(idx == i) = 1;
+   imshow(tmp)
    waitforbuttonpress
    val = img(idx == i);
    v(i) = sqrt(var(val(:))) / mean(val(:)); % coefficient of variance
 end
-
-id = find(v(2, :) == max(v(2, :)));
-[~, sid] = sort(v);
+%}
+%{
+decide = max(cent);
+decide = decide(2);
+for i = 1:k
+    if cent(i, 2) == decide
+        id = i;
+        break;
+    end
+end
+%}
+id = selectFromClasses(cent, nbrsize)
 out(idx ~= id) = 1;
 
 end
 
 function img = normalize_image(img)
     img = (img - min(img(:))) / (max(img(:)) - min(img(:)));
+end
+
+function id = selectFromClasses(cent, nbrsize)
+    k = size(cent, 1);
+    len = 2 * nbrsize + 1;
+    scratch_width = 4; % mostly, a scratch's width is about 4 px
+    range = [len len * sqrt(2)]; % possible scratch len range
+    approx_black_area = mean(- scratch_width * range + len ^ 2)
+    
+    candidate = zeros(4, 1);
+    
+    num_c = 1;
+    for i = 1:k
+        % if 1-0 and 0-1 pair large enough
+        if cent(i, 2) > range(1) && cent(i, 3) > range(1)
+            candidate(num_c) = i;
+            num_c = num_c + 1;
+        end
+    end
+    num_c = num_c - 1;
+
+    candidate
+    if num_c == 0
+        fprintf(1, 'no candidate....');
+        mcent= max(cent);
+        id = find(cent == mcent(2)) - k;
+        
+        return;
+    end
+   
+    % check 0-0 and 1-1 pair 
+    dist = cent(candidate(1:num_c), 2) - approx_black_area;
+    mdist = min(dist);
+    i = find(dist==mdist(1));
+    id = candidate(i);
 end
