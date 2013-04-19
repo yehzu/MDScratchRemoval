@@ -102,9 +102,9 @@ smooth_img = img;
         
         
         %%% next step~~
-        % scratches = find_scratch(lines, img, sharpImg);
+        scratches = find_scratch(lines, img, sharpImg > 0.1);
         
-        
+        DEBUG_SHOW(scratches, 'scratches', true);
         
         
         
