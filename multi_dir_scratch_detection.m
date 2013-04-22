@@ -53,7 +53,7 @@ smooth_img = img;
              
         
         % --- delete some noises
-        sharpImg(sharpImg < 0.1) = 0;
+        sharpImg(sharpImg < 0.01) = 0;
         
         
         % --- step 2 ---
@@ -87,7 +87,7 @@ smooth_img = img;
         imwrite(sharpImg ~=  0, 'sharpImg.bmp', 'bmp');
         
         
-        [h_img, theta, rho] = hough(sharpImg);
+        [h_img, theta, rho] = hough(sharpImg > 0.1);
 
 
         %accumulator = ceil(accumulator * 65535);
@@ -102,7 +102,7 @@ smooth_img = img;
         
         
         %%% next step~~
-        scratches = find_scratch(lines, img, sharpImg > 0.1);
+        scratches = find_scratch(lines, img, sharpImg > 0.01);
         
         DEBUG_SHOW(scratches, 'scratches', true);
         
