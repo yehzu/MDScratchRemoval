@@ -3,7 +3,7 @@ sharpImg = double(sharpImg);
 % may use cross corelation
 distance_constraint = 5;
 stack_size = 1000;
-cross_correlation_nbr = 10;
+cross_correlation_nbr = 5;
 On = 1;
 Visited = 0.5;
 
@@ -109,22 +109,45 @@ for line_id = 1:num_lines % each line
     for point_id = 1:k
         % should be modified, neighbor pixels
         p_pix = potential_scratch_pixels(point_id, :);
-        out(p_pix(2), p_pix(1)) = is_scratch_pixel(img, p_pix, normal, cross_correlation_nbr);
+        out(p_pix(2), p_pix(1)) = is_scratch_pixel(img, sharpImg, p_pix, normal, cross_correlation_nbr);
     end
     
 end
 
 end %end function
 
-function bool = is_scratch_pixel(img, p_pix, normal, cross_correlation_nbr)
-    len = 1:cross_correlation_nbr;
+function bool = is_scratch_pixel(img, sharpImg, p_pix, normal, cross_correlation_nbr)
+	% img: gray scale image
+	% p_pix: the scratch pixel which would be determined
+	% normal: normal vector
+	% nbr: compare size
+    weber_coeff = 0.1;
+    bool = false;
+	len = 1:cross_correlation_nbr;
     pattern = zeros(cross_correlation_nbr, 2);
     [M, N] = size(img);
-    
+   
+	o_p_pix = p_pix;
     for dir = 1:2 % two side
         
         cur_dir = (-1)^dir * normal; 
+		
+		p_p_pix = o_p_pix;
+		
+		% move to the edge of the scratch
+		while true
+			p_p_pix = p_p_pix + 0.1 * cur_dir;
+			p_pix = round(p_p_pix);
 
+            if sum(p_pix < 1) > 0 || p_pix(2) > M || p_pix(1) > N  % check boundary
+				break;
+			end
+			if sharpImg(p_pix(2), p_pix(1)) == 0
+				break;
+			end
+		end
+
+		% compare the mean of two sides of the scratch 
         for l = len
             pt = round(p_pix + l * cur_dir);
             if sum(pt < 1) > 0 || pt(2) > M || pt(1) > N  % check boundary
@@ -134,10 +157,14 @@ function bool = is_scratch_pixel(img, p_pix, normal, cross_correlation_nbr)
         end
        
     end
-    
-    if abs(corrcoef(pattern(:, 1), pattern(:, 2))) > 0.1
+
+    delta = abs(mean(pattern(:, 1)) - mean(pattern(:, 2)));
+	dth = delta / min(mean(pattern(:, 1)), mean(pattern(:, 2)));
+
+	s_delta = max(abs(img(o_p_pix(2), o_p_pix(1)) - mean(pattern(:, 1))), abs(img(o_p_pix(2), o_p_pix(1)) - mean(pattern(:, 2))));
+	s_dth = s_delta / min(mean(pattern(:, 1)), mean(pattern(:, 2)));
+	
+	if dth < weber_coeff && s_dth > weber_coeff
         bool = true;
-    else 
-        bool = false;
     end
 end
