@@ -121,7 +121,9 @@ function bool = is_scratch_pixel(img, sharpImg, p_pix, normal, cross_correlation
 	% p_pix: the scratch pixel which would be determined
 	% normal: normal vector
 	% nbr: compare size
-    weber_coeff = 0.1;
+    mean_weber_coeff = 0.2;
+    scratch_weber_coeff = 0.02;
+
     bool = false;
 	len = 1:cross_correlation_nbr;
     pattern = zeros(cross_correlation_nbr, 2);
@@ -164,7 +166,7 @@ function bool = is_scratch_pixel(img, sharpImg, p_pix, normal, cross_correlation
 	s_delta = max(abs(img(o_p_pix(2), o_p_pix(1)) - mean(pattern(:, 1))), abs(img(o_p_pix(2), o_p_pix(1)) - mean(pattern(:, 2))));
 	s_dth = s_delta / min(mean(pattern(:, 1)), mean(pattern(:, 2)));
 	
-	if dth < weber_coeff && s_dth > weber_coeff
+	if dth < mean_weber_coeff && s_dth > scratch_weber_coeff
         bool = true;
     end
 end
