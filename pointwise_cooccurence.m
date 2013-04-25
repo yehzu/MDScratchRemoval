@@ -157,8 +157,10 @@ function id = selectFromClasses(cent, nbrsize)
     candidate
     if num_c == 0
         fprintf(1, 'no candidate....');
-        mcent= max(cent);
-        id = find(cent == mcent(2)) - k;
+		
+		cri = cent(:, 2) .* cent(:, 3);
+        mcri = max(cri);
+        id = find(cri == mcri);
         
         return;
     end
