@@ -166,7 +166,7 @@ function id = selectFromClasses(cent, nbrsize)
     end
    
     % check 0-0 and 1-1 pair 
-    dist = cent(candidate(1:num_c), 2) - approx_black_area;
+    dist = abs(cent(candidate(1:num_c), 2) - approx_black_area);
     mdist = min(dist);
     i = find(dist==mdist(1));
     id = candidate(i);
