@@ -62,8 +62,9 @@ smooth_img = img;
         texture_area = pointwise_cooccurence(sharpImg >= 0.1, texture_block_size);
         DEBUG_SHOW(texture_area, 'texture area', true);
         
-        sharpImg(texture_area == 1) = 0; % remove
-        DEBUG_SHOW(sharpImg, 'after', true);
+        hough_input = sharpImg >= 0.1;
+        hough_input(texture_area == 1) = 0; % remove
+        DEBUG_SHOW(hough_input, 'after', true);
         
         % --- step 3 ---
         
@@ -76,34 +77,32 @@ smooth_img = img;
         
         % --- step 4 ---
         %%% cut the noises
-        I_var = sqrt(var(sharpImg(:)));
-        sharpImg( abs(sharpImg) < 2 * I_var) = 0;  % note: how to decide the ratio?
+        I_var = sqrt(var(hough_input(:)));
+        hough_input( abs(hough_input) < 2 * I_var) = 0;  % note: how to decide the ratio?
         
 
 
 
         %%%% step 2: Line Direction Detection
-        DEBUG_SHOW(sharpImg ~= 0, 'Input of Hough trans.', true);
+        DEBUG_SHOW(hough_input > 0.1, 'Input of Hough trans.', true);
         imwrite(sharpImg ~=  0, 'sharpImg.bmp', 'bmp');
         
         
-        [h_img, theta, rho] = hough(sharpImg > 0.1);
-
-
-        %accumulator = ceil(accumulator * 65535);
+        [h_img, theta, rho] = hough(hough_input > 0.1);
 
 
         % find scratches
-        P = houghpeaks(h_img, max_scratch_num, 'threshold', ceil(0.7*max(h_img(:))));
-
-        
-        
+        P = houghpeaks(h_img, max_scratch_num, 'threshold', ceil(0.7 * max(h_img(:))));
         lines = houghlines(img, theta, rho, P, 'FillGap', 999999999, 'MinLength', 7);
         
         
         %%% next step~~
-        scratches = find_scratch(lines, img, sharpImg > 0.01);
+        DEBUG_SHOW(sharpImg > 0.1, 'sharpimg', true);
+        scratches = find_scratch(lines, img, sharpImg > 0.1);
         
+        SE1 = strel('ball',1,1);
+        SE2 = strel('ball',5,5);
+        scratches = imdilate(imclose(scratches, SE1), SE2);
         DEBUG_SHOW(scratches, 'scratches', true);
         
         
