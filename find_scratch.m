@@ -1,9 +1,11 @@
 function out = find_scratch(lines, img, sharpImg)
 sharpImg = double(sharpImg);
 % may use cross corelation
-distance_constraint = 5;
+distance_constraint = 10;
 stack_size = 1000;
 cross_correlation_nbr = 5;
+connected_component_threshold = 7;
+min_total_scratch_pixel = 100;
 On = 1;
 Visited = 0.5;
 
@@ -13,6 +15,7 @@ num_lines = length(lines);
 
 out = zeros(size(img));
 stack = zeros(stack_size, 2);
+max_connected_component_num = -inf;
 
 for line_id = 1:num_lines % each line
     p1 = lines(line_id).point1;
@@ -23,7 +26,7 @@ for line_id = 1:num_lines % each line
     
     potential_scratch_pixels = - ones(ceil(4 * sqrt(M^2 + N^2)), 2); % initial memory size is 4 * diag of image
     
-    k = 1;
+    k = 0;
     for l = len
         center = round(p1 + l * dir);
         
@@ -32,8 +35,11 @@ for line_id = 1:num_lines % each line
 			continue;
         end
         
+		recorded_point = zeros(stack_size, 2);
+		record_size = 1;
         if sharpImg(center(2), center(1)) == On % is scratch point
-            
+			recorded_point(1, :) = center;
+			record_size = record_size + 1;
             % ---
 			%recursive part, find connected component
 			
@@ -46,8 +52,10 @@ for line_id = 1:num_lines % each line
 				point = stack(s_ptr, :);
 				s_ptr = s_ptr - 1;
                  
-				potential_scratch_pixels(k, :) = point;
-				k = k + 1;
+				%potential_scratch_pixels(k, :) = point;
+				recorded_point(record_size, :) = point;
+				record_size = record_size + 1;
+				%k = k + 1;
                    
                 %{
 				% 4-connected neighborhoods 
@@ -74,7 +82,9 @@ for line_id = 1:num_lines % each line
                     if sum(neighbors(pt, :) <= 0) > 0 || sum(neighbors(pt, 2) > M) > 0 || sum(neighbors(pt, 1) > N) > 0
 						continue;
                     end
-                    
+                   
+
+					% distance constraint
                     u = neighbors(pt, :) - p1;
                     if sqrt(norm(u)^2 - (u * dir')^2) > distance_constraint
                        continue; 
@@ -99,12 +109,26 @@ for line_id = 1:num_lines % each line
                 end
 			end  % end while
             % ---
-            
+			
+			record_size = record_size - 1
+			% if the connected scratch is too small, it may be noise
+            if record_size > connected_component_threshold
+				potential_scratch_pixels(k+1: k+record_size , :) = recorded_point(1:record_size, :);
+				k = k + record_size;
+				if max_connected_component_num < record_size
+					max_connected_component_num = record_size;
+				end
+			end
         end
     end
+	%potential_scratch_pixels
+    %k = k - 1;
+   
+	max_connected_component_num
+	if max_connected_component_num < min_total_scratch_pixel
+		k = 0;
+	end
 
-    k = k - 1;
-    
 	% check each side of the scratch
     for point_id = 1:k
         % should be modified, neighbor pixels
@@ -121,8 +145,8 @@ function bool = is_scratch_pixel(img, sharpImg, p_pix, normal, cross_correlation
 	% p_pix: the scratch pixel which would be determined
 	% normal: normal vector
 	% nbr: compare size
-    mean_weber_coeff = 0.2;
-    scratch_weber_coeff = 0.02;
+    mean_weber_coeff = 0.3;
+    scratch_weber_coeff = 0;
 
     bool = false;
 	len = 1:cross_correlation_nbr;
