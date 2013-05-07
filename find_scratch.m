@@ -1,6 +1,5 @@
 function out = find_scratch(lines, img, sharpImg)
-sharpImg = double(sharpImg);
-% may use cross corelation
+
 distance_constraint = 10;
 stack_size = 1000;
 cross_correlation_nbr = 5;
@@ -8,189 +7,107 @@ connected_component_threshold = 7;
 min_total_scratch_pixel = 100;
 On = 1;
 Visited = 0.5;
-
+scratch_width = 5;
 
 num_lines = length(lines);
 [M, N] = size(img);
 
 out = zeros(size(img));
-stack = zeros(stack_size, 2);
+point_stack = zeros(stack_size, 2);
+ps_size = 0;
+
 max_connected_component_num = -inf;
 
-for line_id = 1:num_lines % each line
-    p1 = lines(line_id).point1;
+
+for line_id = 1:num_lines
+	p1 = lines(line_id).point1;
     p2 = lines(line_id).point2;
-    dir = (p2 - p1) / norm(p2 - p1);
+	dir = (p2 - p1) / norm(p2 - p1);
     normal = [dir(2), -dir(1)];
-    len = [0:1:norm(p2 - p1), norm(p2 - p1)]; % small bug (twice norm(p2 - p1))
     
-    potential_scratch_pixels = - ones(ceil(4 * sqrt(M^2 + N^2)), 2); % initial memory size is 4 * diag of image
-    
-    k = 0;
-    for l = len
-        center = round(p1 + l * dir);
-        
-        % boundary detection
-        if sum(center <= 0) > 0 || sum(center(2) > M) > 0 || sum(center(1) > N) > 0
-			continue;
+    p = p1;
+    while norm(p - p2) > 1
+    	p
+        if sharpImg(p(2), p(1)) == On
+    	    pset = extend_scratch_width(p, normal, scratch_width, sharpImg); % find nearest 5 pixels
+            for pt = 1:length(pset)
+                [scratches sharpImg] = grow_scratch(pset(pt, :), dir, sharpImg); % find scartch and update sharpImg
+                point_stack(ps_size + 1: ps_size + size(scratches, 1), :) = scratches;
+                ps_size = ps_size + size(scratches, 2);
+    	    end
         end
-        
-		recorded_point = zeros(stack_size, 2);
-		record_size = 1;
-        if sharpImg(center(2), center(1)) == On % is scratch point
-			recorded_point(1, :) = center;
-			record_size = record_size + 1;
-            % ---
-			%recursive part, find connected component
-			
-            sharpImg(center(2), center(1)) = Visited;
-            stack(1, :) = center;
-			s_ptr = 1;
-			
-			while true
-				% get the scratch point from the stack, and collect all the connected component.
-				point = stack(s_ptr, :);
-				s_ptr = s_ptr - 1;
-                 
-				%potential_scratch_pixels(k, :) = point;
-				recorded_point(record_size, :) = point;
-				record_size = record_size + 1;
-				%k = k + 1;
-                   
-                %{
-				% 4-connected neighborhoods 
-				neighbors = [point(1), point(2) + 1;
-							 point(1), point(2) - 1;
-							 point(1) + 1, point(2);
-							 point(1) - 1, point(2)];
-                num_nbr = 4;
-                %}
-                
-                % 8-connected neighborhoods
-                neighbors = [point(1), point(2) + 1;
-							 point(1), point(2) - 1;
-							 point(1) + 1, point(2);
-							 point(1) - 1, point(2);
-                             point(1) + 1, point(2) + 1;
-							 point(1) - 1, point(2) - 1;
-							 point(1) + 1, point(2) - 1;
-							 point(1) - 1, point(2) + 1];
-                num_nbr = 8;
-                
-				
-                for pt = 1:num_nbr
-                    if sum(neighbors(pt, :) <= 0) > 0 || sum(neighbors(pt, 2) > M) > 0 || sum(neighbors(pt, 1) > N) > 0
-						continue;
-                    end
-                   
+        p = round(p + dir);
+    end 
+    % len = [0:1:norm(p2 - p1), norm(p2 - p1)]; % small bug (twice norm(p2 - p1))
 
-					% distance constraint
-                    u = neighbors(pt, :) - p1;
-                    if sqrt(norm(u)^2 - (u * dir')^2) > distance_constraint
-                       continue; 
-                    end
-                    
-                    if sharpImg(neighbors(pt, 2), neighbors(pt, 1)) == On
-                        
-                        % check stack size
-                        if s_ptr == stack_size
-                           stack_size = stack_size * 2;
-                           stack = [stack; zeros(size(stack))];
-                        end
-                        
-                        sharpImg(neighbors(pt, 2), neighbors(pt, 1)) = Visited;
-                        s_ptr = s_ptr + 1;
-						stack(s_ptr, :) = neighbors(pt, :);
-                    end
-                end
-				
-                if s_ptr == 0
-                    break;
-                end
-			end  % end while
-            % ---
-			
-			record_size = record_size - 1
-			% if the connected scratch is too small, it may be noise
-            if record_size > connected_component_threshold
-				potential_scratch_pixels(k+1: k+record_size , :) = recorded_point(1:record_size, :);
-				k = k + record_size;
-				if max_connected_component_num < record_size
-					max_connected_component_num = record_size;
-				end
-			end
-        end
-    end
-	%potential_scratch_pixels
-    %k = k - 1;
-   
-	max_connected_component_num
-	if max_connected_component_num < min_total_scratch_pixel
-		k = 0;
-	end
-
-	% check each side of the scratch
-    for point_id = 1:k
-        % should be modified, neighbor pixels
-        p_pix = potential_scratch_pixels(point_id, :);
-        out(p_pix(2), p_pix(1)) = is_scratch_pixel(img, sharpImg, p_pix, normal, cross_correlation_nbr);
-    end
-    
+end
 end
 
-end %end function
-
-function bool = is_scratch_pixel(img, sharpImg, p_pix, normal, cross_correlation_nbr)
-	% img: gray scale image
-	% p_pix: the scratch pixel which would be determined
-	% normal: normal vector
-	% nbr: compare size
-    mean_weber_coeff = 0.3;
-    scratch_weber_coeff = 0;
-
-    bool = false;
-	len = 1:cross_correlation_nbr;
-    pattern = zeros(cross_correlation_nbr, 2);
-    [M, N] = size(img);
-   
-	o_p_pix = p_pix;
-    for dir = 1:2 % two side
-        
-        cur_dir = (-1)^dir * normal; 
-		
-		p_p_pix = o_p_pix;
-		
-		% move to the edge of the scratch
-		while true
-			p_p_pix = p_p_pix + 0.1 * cur_dir;
-			p_pix = round(p_p_pix);
-
-            if sum(p_pix < 1) > 0 || p_pix(2) > M || p_pix(1) > N  % check boundary
-				break;
-			end
-			if sharpImg(p_pix(2), p_pix(1)) == 0
-				break;
-			end
-		end
-
-		% compare the mean of two sides of the scratch 
-        for l = len
-            pt = round(p_pix + l * cur_dir);
-            if sum(pt < 1) > 0 || pt(2) > M || pt(1) > N  % check boundary
-                continue;
-            end
-            pattern(l, dir) = img(pt(2), pt(1));
+%% extend_scratch_width: according the first p to border the scratch
+function [pset] = extend_scratch_width(p, normal, scratch_width, sharpImg)
+	ext_scratch_para = -scratch_width/2 : scratch_width/2;
+    pset = round( ext_scratch_para' * normal + ones(size(ext_scratch_para))' * p );
+    for ptn = 1:scratch_width  % remove invalid points
+        if pset(ptn, 1) < 1 || pset(ptn, 2) < 1 || pset(ptn, 1) > size(sharpImg, 2) || pset(ptn, 2) > size(sharpImg, 1)
+            pset(ptn, :) = [];
         end
-       
+    end 
+end
+
+
+%% grow_scratch: according the first p to grow the whole scratch
+function [scratches sharpImg] = grow_scratch(p, dir, sharpImg)
+    % parameters
+    scratch_size = 1000;
+    stack_size = 1000;
+    Visited = 0.5;
+    On = 1;
+    rand_test_time = 100;
+
+    % storage
+    scratches = zeros(scratch_size, 2);
+    pt_stack = zeros(stack_size, 2);
+    n_ps = 0;
+    dir_stack = zeros(stack_size, 2);
+    n_ds = 0;
+
+
+    tdir = dir;
+    % main loop
+    while true
+        sharpImg(p(2), p(1)) = Visited;
+        n_ps = n_ps + 1;
+        scratches(n_ps, :) = p;
+
+        test = 0;
+        % find next point
+        while true
+            np = round(p + tdir)
+            if sum(np == p) == 2
+                np = round(p + 2 * tdir);
+            end
+
+            if sum(np < 1) < 1 && np(2) < size(sharpImg, 1) && np(1) < size(sharpImg, 2) && sharpImg(np(2), np(1)) == On 
+                p = np;
+                dir = tdir;
+                break;
+            else
+                theta = (rand(1) * 2 - 1) * pi / 5;
+                theta
+                tdir = dir * [cos(theta), sin(theta); -sin(theta), cos(theta)]; 
+                dir
+            end
+            test = test + 1;
+            if test > rand_test_time
+                break;
+            end
+        end
+
+        if test > rand_test_time
+            break;
+        end
+
     end
 
-    delta = abs(mean(pattern(:, 1)) - mean(pattern(:, 2)));
-	dth = delta / min(mean(pattern(:, 1)), mean(pattern(:, 2)));
-
-	s_delta = max(abs(img(o_p_pix(2), o_p_pix(1)) - mean(pattern(:, 1))), abs(img(o_p_pix(2), o_p_pix(1)) - mean(pattern(:, 2))));
-	s_dth = s_delta / min(mean(pattern(:, 1)), mean(pattern(:, 2)));
-	
-	if dth < mean_weber_coeff && s_dth > scratch_weber_coeff
-        bool = true;
-    end
+    
 end
