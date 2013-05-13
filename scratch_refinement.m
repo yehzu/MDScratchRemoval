@@ -11,8 +11,10 @@ err = 0;
 
 % do preprocessing on sharpimg
 % erode the image
+%SE = strel('ball',5,5);
+%sharpImg = imerode(sharpImg, SE);
 
-while last_err - err > 10^-5
+while abs(last_err - err) > 10^-6
 	last_err = err;
 	inpaint_img = img;
 	inpaint_mask = sharpImg;
@@ -52,7 +54,7 @@ while last_err - err > 10^-5
 							err = abs(img(patch_idi, patch_idj) - img( current_idi, current_idj) );
 							if abs(minerr - sum(err(:))) < 10^-6
 								inpaint_img(current_idi, current_idj) = best_patch;
-								inpaint_mask(currnet_idi, current_idj) = 0;
+								inpaint_mask(current_idi, current_idj) = 0;
 								break
 							end
 
@@ -80,21 +82,28 @@ while last_err - err > 10^-5
 
 	% compute error
 	diff_img = abs(img - inpaint_img);
-	imshow(inpaint_img);
-	waitforbuttonpress
+	%imshow(inpaint_img);
+	%waitforbuttonpress
 	
 	% compute the variance of error
-	d_var = var(diff_img(diff_img ~= 0));
+	d_var = var(diff_img(diff_img ~= 0))
+	num_err_pix = sum(sum(diff_img ~= 0));
 
+	if d_var < 0.01
+%		break;
+	end
 	% have to use a better criteria to update the scratch
 	% update scratch
-	sharpImg(diff_img - mean(diff_img(:)) < d_var) = 0;
+	sharpImg( abs(diff_img - mean(diff_img(:))) <  d_var) = 0;
+	% sharpImg = abs(diff_img - mean(diff_img(:))) > 2 * d_var;
 
 	imshow(sharpImg);
-	waitforbuttonpress
-	err = sum(diff_img(:))
+	%waitforbuttonpress
+	err = sum(diff_img(abs(diff_img - mean(diff_img(:))) >  d_var)) / num_err_pix
 
 end
+imshow(sharpImg);
+waitforbuttonpress
 scratch = sharpImg;
 
 
