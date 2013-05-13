@@ -100,9 +100,9 @@ smooth_img = img;
         DEBUG_SHOW(sharpImg > 0.1, 'sharpimg', true);
         scratches = find_scratch(lines, img, sharpImg > 0.1);
         
-        SE1 = strel('ball',1,1);
-        SE2 = strel('ball',5,5);
-        scratches = imdilate(imclose(scratches, SE1), SE2);
+        %SE1 = strel('ball',1,1);
+        %SE2 = strel('ball',5,5);
+        %scratches = imdilate(imclose(scratches, SE1), SE2);
         DEBUG_SHOW(scratches, 'scratches', true);
         
         
