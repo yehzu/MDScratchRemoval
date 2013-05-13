@@ -41,8 +41,10 @@ for line_id = 1:num_lines
     % len = [0:1:norm(p2 - p1), norm(p2 - p1)]; % small bug (twice norm(p2 - p1))
     
 end
-point_stack
-out(point_stack(:, 2), point_stack(:, 1)) = 1;
+point_stack(1:ps_size, :)
+for pt = 1:ps_size	
+	out(point_stack(pt, 2), point_stack(pt, 1)) = 1;
+end
 end
 
 %% extend_scratch_width: according the first p to border the scratch
@@ -104,8 +106,8 @@ while true
             dir = tdir;
             break;
         else
-            np1 = round([p(1) + 1, p(2)]);
-            np2 = round([p(1) - 1, p(2)]);
+            np1 = round([np(1), np(2)+1]);
+            np2 = round([np(1), np(2)-1]);
             
             if sum(np1 < 1) < 1 && np1(2) < size(sharpImg, 1) && np1(1) < size(sharpImg, 2) && sharpImg(np1(2), np1(1)) == On
                 fprintf(1, 'road 2\n');
@@ -143,4 +145,5 @@ while true
         
         
     end % end while
+	scratches = scratches(1:n_ps, :);
 end % end func
