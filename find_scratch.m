@@ -31,9 +31,11 @@ for line_id = 1:num_lines
         if sharpImg(round(p(2)), round(p(1))) == On
             pset = extend_scratch_width(round(p), normal, scratch_width, sharpImg); % find nearest 5 pixels
             for pt = 1:length(pset)
-                [scratches sharpImg] = grow_scratch(pset(pt, :), dir, sharpImg); % find scartch and update sharpImg
-                point_stack(ps_size + 1: ps_size + size(scratches, 1), :) = scratches;
-                ps_size = ps_size + size(scratches, 1);
+                if sharpImg(pset(pt, 2), pset(pt, 1)) == On
+                    [scratches sharpImg] = grow_scratch(pset(pt, :), dir, sharpImg); % find scartch and update sharpImg
+                    point_stack(ps_size + 1: ps_size + size(scratches, 1), :) = scratches;
+                    ps_size = ps_size + size(scratches, 1);
+                end
             end
         end
         p = p + dir;
@@ -51,9 +53,11 @@ end
 function [pset] = extend_scratch_width(p, normal, scratch_width, sharpImg)
 ext_scratch_para = -scratch_width/2 : scratch_width/2;
 pset = round( ext_scratch_para' * normal + ones(size(ext_scratch_para))' * p );
-for ptn = 1:scratch_width  % remove invalid points
-    if pset(ptn, 1) < 1 || pset(ptn, 2) < 1 || pset(ptn, 1) > size(sharpImg, 2) || pset(ptn, 2) > size(sharpImg, 1)
-        pset(ptn, :) = [];
+n_delete = 0;
+for ptn = 1:size(pset, 1)  % remove invalid points
+    if pset(ptn - n_delete, 1) < 1 || pset(ptn - n_delete, 2) < 1 || pset(ptn - n_delete, 1) > size(sharpImg, 2) || pset(ptn - n_delete, 2) > size(sharpImg, 1)
+        pset(ptn - n_delete, :) = [];
+        n_delete = n_delete + 1;
     end
 end
 end
@@ -90,32 +94,36 @@ tdir = dir / dir(1);
 % main loop
 no_scratch = false;
 while true
-    sharpImg(p(2), p(1)) = Visited;
+    sharpImg(round(p(2)), round(p(1))) = Visited;
+	%imshow(sharpImg)
+    %waitforbuttonpress
+
     n_ps = n_ps + 1;
-    scratches(n_ps, :) = p;
+    scratches(n_ps, :) = round(p);
     
     test = 0;
     % find next point
     while true
-        np = round([p(1) + 1 ,p(2) + dir(2)])
+        np = [p(1) + 1 ,p(2) + dir(2)];
+        rnp = round(np);
         
-        
-        if sum(np < 1) < 1 && np(2) < size(sharpImg, 1) && np(1) < size(sharpImg, 2) && sharpImg(np(2), np(1)) == On
+        if sum(rnp < 1) < 1 && rnp(2) < size(sharpImg, 1) && rnp(1) < size(sharpImg, 2) && sharpImg(rnp(2), rnp(1)) == On
             fprintf(1, 'road 1\n');
             p = np;
             dir = tdir;
             break;
         else
-            np1 = round([np(1), np(2)+1]);
-            np2 = round([np(1), np(2)-1]);
-            
-            if sum(np1 < 1) < 1 && np1(2) < size(sharpImg, 1) && np1(1) < size(sharpImg, 2) && sharpImg(np1(2), np1(1)) == On
+            np1 = [np(1), np(2)+1];
+            np2 = [np(1), np(2)-1];
+            rnp1 = round(np1);
+            rnp2 = round(np2);
+            if sum(rnp1 < 1) < 1 && rnp1(2) < size(sharpImg, 1) && rnp1(1) < size(sharpImg, 2) && sharpImg(rnp1(2), rnp1(1)) == On
                 fprintf(1, 'road 2\n');
                 p = np1;
                 dir = tdir;
                 break;
                 
-            elseif sum(np2 < 1) < 1 && np2(2) < size(sharpImg, 1) && np2(1) < size(sharpImg, 2) && sharpImg(np2(2), np2(1)) == On
+            elseif sum(rnp2 < 1) < 1 && rnp2(2) < size(sharpImg, 1) && rnp2(1) < size(sharpImg, 2) && sharpImg(rnp2(2), rnp2(1)) == On
                     fprintf(1, 'road 3\n');
                     p = np2;
                     dir = tdir;
@@ -141,7 +149,7 @@ while true
         fprintf(1, 'break\n');
         break;
     end % end if
-        
+
         
         
     end % end while
