@@ -55,11 +55,22 @@ for line_id = 1:num_lines
 							pt2 = round(linspace(last_p(2), pset(pt, 2), nor))
 							
 							for i = 1:length(pt1)
-								if abs(img(pt2(i), pt1(i)) - mi) < 2* vi
-									fprintf(1, 'fill scratch\n');
-									point_stack(ps_size + 1, :) = [pt1(i), pt2(i)];
-									ps_size = ps_size + 1;
+								patch_j = pt1 - fill_gap_nbr:pt1 + fill_gap_nbr;
+								patch_i = pt2 - fill_gap_nbr:pt2 + fill_gap_nbr;
+
+								for idx_i = 1: length(patch_i)
+									for idx_j = 1: length(patch_j)
+										if patch_j(idx_j) < 1 || patch_i(idx_i) < 1 || patch_j(idx_j) > N || patch_i(idx_i) > M
+											continue
+										end
+										if abs(img(patch_i(idx_i), patch_j(idx_j)) - mi) < 2* vi
+											fprintf(1, 'fill scratch\n');
+											point_stack(ps_size + 1, :) = [patch_j(idx_j), patch_i(idx_i)];
+											ps_size = ps_size + 1;
+										end
+									end
 								end
+
 							end
 							
 						end
