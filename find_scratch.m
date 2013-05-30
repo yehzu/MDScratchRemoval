@@ -1,5 +1,5 @@
 function out = find_scratch(lines, img, sharpImg)
-
+fprintf(1, 'find_scratch\n');
 distance_constraint = 10;
 stack_size = 1000;
 cross_correlation_nbr = 5;
@@ -36,7 +36,8 @@ for line_id = 1:num_lines
                 if sharpImg(pset(pt, 2), pset(pt, 1)) == On
 					
                     [scratches len sharpImg] = grow_scratch(pset(pt, :), dir, sharpImg); % find scartch and update sharpImg
-                    if len > 3
+                    scratches
+                    if len > 1
 						point_stack(ps_size + 1: ps_size + size(scratches, 1), :) = scratches;
 						ps_size = ps_size + size(scratches, 1);
 
@@ -91,6 +92,7 @@ end
 
 %% extend_scratch_width: according the first p to border the scratch
 function [pset] = extend_scratch_width(p, normal, scratch_width, sharpImg)
+fprintf(1, 'extend_scratch_width\n');
 ext_scratch_para = -scratch_width/2 : scratch_width/2;
 pset = round( ext_scratch_para' * normal + ones(size(ext_scratch_para))' * p );
 n_delete = 0;
@@ -104,23 +106,31 @@ end
 
 %% grow_scratch: according the first p to grow the whole scratch
 function [scratches, maxlen, sharpImg] = grow_scratch(p, dir, sharpImg)
+fprintf(1, 'grow_scratch\n');
 % parameters
 sharpImg = double(sharpImg);
 scratch_size = 1000;
-stack_size = 1000;
+%stack_size = 1000;
 Visited = 0.5;
 On = 1;
 rand_test_time = 100;
 
 % storage
 scratches = zeros(scratch_size, 2);
-pt_stack = zeros(stack_size, 2);
+%pt_stack = zeros(stack_size, 2);
 n_ps = 0;
-dir_stack = zeros(stack_size, 2);
-n_ds = 0;
+%dir_stack = zeros(stack_size, 2);
+%n_ds = 0;
 
+mode = 0;
+if dir(1) > dir(2)
+    mode = 1;
+    tdir = dir / dir(1);
+else
+    mode = 2;
+    tdir = dir / dir(2);
+end
 
-tdir = dir / dir(1);
 % main loop
 no_scratch = false;
 maxlen = 0;
@@ -136,7 +146,12 @@ while true
     test = 0;
     % find next point
     while true
-        np = [p(1) + 1 ,p(2) + dir(2)];
+        if mode == 1
+            np = [p(1) + 1 ,p(2) + dir(2)];
+        else
+            np = [p(1) + dir(1) ,p(2) + 1];
+        end
+        
         rnp = round(np);
         
         if sum(rnp < 1) < 1 && rnp(2) < size(sharpImg, 1) && rnp(1) < size(sharpImg, 2) && sharpImg(rnp(2), rnp(1)) == On
@@ -144,8 +159,15 @@ while true
             dir = tdir;
             break;
         else
-            np1 = [np(1), np(2)+1];
-            np2 = [np(1), np(2)-1];
+            
+            if mode == 1
+                np1 = [np(1), np(2)+1];
+                np2 = [np(1), np(2)-1];
+            else
+                np1 = [np(1)+1, np(2)];
+                np2 = [np(1)-1, np(2)];
+            end
+            
             rnp1 = round(np1);
             rnp2 = round(np2);
             if sum(rnp1 < 1) < 1 && rnp1(2) < size(sharpImg, 1) && rnp1(1) < size(sharpImg, 2) && sharpImg(rnp1(2), rnp1(1)) == On
@@ -160,10 +182,7 @@ while true
             else
                     no_scratch = true;
             end
-                %theta = (rand(1) * 2 - 1) * pi / 5;
-                %theta
-                %tdir = dir * [cos(theta), sin(theta); -sin(theta), cos(theta)];
-                %dir
+               
         end % end if
         test = test + 1;
         if test > rand_test_time || no_scratch

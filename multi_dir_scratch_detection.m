@@ -98,6 +98,10 @@ smooth_img = img;
         
         %%% next step~~
         DEBUG_SHOW(sharpImg > 0.1, 'sharpimg', true);
+
+        % find precise scratch direction using globle direction
+        lines = refine_direction(lines, hough_input > 0.1);
+
         scratches = find_scratch(lines, img, sharpImg > 0.1);
         
         %SE1 = strel('ball',1,1);
