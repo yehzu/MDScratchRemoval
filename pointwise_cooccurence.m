@@ -72,11 +72,19 @@ k = 4;
 fprintf(1, 'Clustering\n');
 
 idx = [];
+
+limit = 30;
+counter = 0;
 while isempty(idx)
+    
     try
         [idx cent] = kmeans(f, k);
     catch err
         err.identifier
+        counter = counter  + 1;
+        if counter > limit
+            k = k -1;
+        end
     end
 end
 cent
@@ -139,7 +147,7 @@ function id = selectFromClasses(cent, nbrsize)
     k = size(cent, 1);
     len = 2 * nbrsize + 1;
     scratch_width = 4; % mostly, a scratch's width is about 4 px
-    range = [len len * sqrt(2)]; % possible scratch len range
+    range = [len len * sqrt(2)] * 2/3; % possible scratch len range
     approx_black_area = mean(- scratch_width * range + len ^ 2)
     
     candidate = zeros(4, 1);

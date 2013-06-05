@@ -1,9 +1,10 @@
-function outlines = refine_direction(lines, sharpImg)
+function outlines = refine_direction(lines, para, sharpImg)
 	% back up of sharpImg
 	origin = sharpImg;
 	partitions = 5;
 	max_scratch_num = 6;
 	outlines = [];
+    para_dist = 5;
 	for line_id = 1:length(lines)   
 		p1 = lines(line_id).point1;
     	p2 = lines(line_id).point2;
@@ -17,7 +18,16 @@ function outlines = refine_direction(lines, sharpImg)
     		[h_img, theta, rho] = hough(conditioned_map);
     		P = houghpeaks(h_img, max_scratch_num, 'threshold', ceil(0.7 * max(h_img(:))));
     		l = houghlines(sharpImg, theta, rho, P, 'FillGap', 100, 'MinLength', 7);
-
+            
+            %{
+            for sub_lines = 1:length(l)
+                
+               if norm( P(sub_lines, :) - para(line_id, :)) < para_dist
+                    outlines = [outlines l(sub_lines)];
+               end
+            end
+            %}
+            
     		for sub_lines = 1:length(l)
     			sp1 = l(sub_lines).point1;
     			sp2 = l(sub_lines).point2;
@@ -30,7 +40,7 @@ function outlines = refine_direction(lines, sharpImg)
     			end
 
     		end
-
+            
     		%{
     		figure, imshow(ROI_of_partition(sharpImg, pt(:, part), pt(:, part + 1))), hold on
         	max_len = 0;

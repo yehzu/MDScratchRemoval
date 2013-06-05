@@ -7,7 +7,7 @@ end
 
 % trans to gray scale
 if size(img, 3) == 3
-   img = rgb2gray(img);
+   img = rgb2gray(img); 
 end
 
 % normalize
@@ -24,6 +24,8 @@ scratch_threshold = 50;
 madian_filter_radius = 3;
 gradiant_avg_nbr = 7;
 texture_block_size = 5;
+binary_threshold = 0.1;
+
 
 [img_width, img_height, img_color] = size(img);
 
@@ -53,18 +55,19 @@ smooth_img = img;
              
         
         % --- delete some noises
-        sharpImg(sharpImg < 0.01) = 0;
+        sharpImg(sharpImg < binary_threshold) = 0;
         
+        binary_image = sharpImg > binary_threshold;
         
         % --- step 2 ---
         %%% remove texture
         DEBUG_SHOW(sharpImg >= 0.1, 'before', true);
-        texture_area = pointwise_cooccurence(sharpImg >= 0.1, texture_block_size);
-        DEBUG_SHOW(texture_area, 'texture area', true);
+        texture_area = pointwise_cooccurence(binary_image, texture_block_size);
+         DEBUG_SHOW(texture_area, 'texture area', true);
         
-        hough_input = sharpImg >= 0.1;
-        hough_input(texture_area == 1) = 0; % remove
-        DEBUG_SHOW(hough_input, 'after', true);
+        hough_input = sharpImg;
+        hough_input(texture_area == 1) = 0; % remove texture
+        % DEBUG_SHOW(hough_input, 'after', true);
         
         % --- step 3 ---
         
@@ -84,11 +87,12 @@ smooth_img = img;
 
 
         %%%% step 2: Line Direction Detection
-        DEBUG_SHOW(hough_input > 0.1, 'Input of Hough trans.', true);
-        imwrite(sharpImg ~=  0, 'sharpImg.bmp', 'bmp');
+        %DEBUG_SHOW(hough_input > 0.1, 'Input of Hough trans.', true);
+        imwrite(hough_input ~=  0, 'sharpImg.bmp', 'bmp');
         
-        
-        [h_img, theta, rho] = hough(hough_input > 0.1);
+        hough_input = hough_input ~= 0;
+
+        [h_img, theta, rho] = hough(hough_input);
 
 
         % find scratches
@@ -100,9 +104,9 @@ smooth_img = img;
         DEBUG_SHOW(sharpImg > 0.1, 'sharpimg', true);
 
         % find precise scratch direction using globle direction
-        lines = refine_direction(lines, hough_input > 0.1);
+        lines = refine_direction(lines, P, hough_input);
 
-        scratches = find_scratch(lines, img, sharpImg > 0.1);
+        scratches = find_scratch(lines, img, sharpImg > binary_threshold);
         
         %SE1 = strel('ball',1,1);
         %SE2 = strel('ball',5,5);
@@ -133,7 +137,7 @@ smooth_img = img;
 
 
 
-        out = 0;
+        out = scratches;
         
 
 end

@@ -65,7 +65,7 @@ for line_id = 1:num_lines
 											continue
 										end
 										if abs(img(patch_i(idx_i), patch_j(idx_j)) - mi) < 2* vi
-											fprintf(1, 'fill scratch\n');
+											%fprintf(1, 'fill scratch\n');
 											point_stack(ps_size + 1, :) = [patch_j(idx_j), patch_i(idx_i)];
 											ps_size = ps_size + 1;
 										end
@@ -92,7 +92,7 @@ end
 
 %% extend_scratch_width: according the first p to border the scratch
 function [pset] = extend_scratch_width(p, normal, scratch_width, sharpImg)
-fprintf(1, 'extend_scratch_width\n');
+%fprintf(1, 'extend_scratch_width\n');
 ext_scratch_para = -scratch_width/2 : scratch_width/2;
 pset = round( ext_scratch_para' * normal + ones(size(ext_scratch_para))' * p );
 n_delete = 0;
@@ -106,7 +106,7 @@ end
 
 %% grow_scratch: according the first p to grow the whole scratch
 function [scratches, maxlen, sharpImg] = grow_scratch(p, dir, sharpImg)
-fprintf(1, 'grow_scratch\n');
+%fprintf(1, 'grow_scratch\n');
 % parameters
 sharpImg = double(sharpImg);
 scratch_size = 1000;
