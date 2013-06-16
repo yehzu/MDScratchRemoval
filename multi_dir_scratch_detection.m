@@ -1,4 +1,4 @@
-function out =  multi_dir_scratch_detection(img, scratch_color)
+function out =  multi_dir_scratch_detection(img, scratch_color, filename)
 
 % scratch color preprocess
 if scratch_color == 0
@@ -23,13 +23,15 @@ max_scratch_num = 6;
 scratch_threshold = 50;
 madian_filter_radius = 3;
 gradiant_avg_nbr = 7;
-texture_block_size = 5;
+texture_block_size = 9;
 binary_threshold = 0.1;
 
 
 [img_width, img_height, img_color] = size(img);
 
 
+myfilter = fspecial('gaussian',[2 2], 0.8);
+img = imfilter(img, myfilter, 'replicate');
 %smooth_img = L0Smoothing(img, 0.0001, 1.5);
 smooth_img = img;
 
@@ -57,13 +59,14 @@ smooth_img = img;
         % --- delete some noises
         sharpImg(sharpImg < binary_threshold) = 0;
         
+        save_tmp_image(sharpImg, 'result/', filename, 'taphat');
         binary_image = sharpImg > binary_threshold;
-        
+        save_tmp_image(binary_image, 'result/', filename, 'threshold');
         % --- step 2 ---
         %%% remove texture
         DEBUG_SHOW(sharpImg >= 0.1, 'before', true);
         texture_area = pointwise_cooccurence(binary_image, texture_block_size);
-         DEBUG_SHOW(texture_area, 'texture area', true);
+        DEBUG_SHOW(texture_area, 'texture area', true);
         
         hough_input = sharpImg;
         hough_input(texture_area == 1) = 0; % remove texture
@@ -83,12 +86,12 @@ smooth_img = img;
         I_var = sqrt(var(hough_input(:)));
         hough_input( abs(hough_input) < 2 * I_var) = 0;  % note: how to decide the ratio?
         
-
-
+        save_tmp_image(hough_input ~= 0, 'result/', filename, 'hough_input');
+        %imwrite(hough_input ~= 0, 'result/hough_input.jpg', 'jpg');
 
         %%%% step 2: Line Direction Detection
         %DEBUG_SHOW(hough_input > 0.1, 'Input of Hough trans.', true);
-        imwrite(hough_input ~=  0, 'sharpImg.bmp', 'bmp');
+        %imwrite(hough_input ~=  0, 'sharpImg.bmp', 'bmp');
         
         hough_input = hough_input ~= 0;
 
@@ -96,28 +99,11 @@ smooth_img = img;
 
 
         % find scratches
-        P = houghpeaks(h_img, max_scratch_num, 'threshold', ceil(0.7 * max(h_img(:))));
+        P = houghpeaks(h_img, max_scratch_num, 'threshold', ceil(0.6 * max(h_img(:))));
         lines = houghlines(img, theta, rho, P, 'FillGap', 999999999, 'MinLength', 7);
-        
-        
-        %%% next step~~
-        DEBUG_SHOW(sharpImg > 0.1, 'sharpimg', true);
 
-        % find precise scratch direction using globle direction
-        lines = refine_direction(lines, P, hough_input);
-
-        scratches = find_scratch(lines, img, sharpImg > binary_threshold);
-        
-        %SE1 = strel('ball',1,1);
-        %SE2 = strel('ball',5,5);
-        %scratches = imdilate(imclose(scratches, SE1), SE2);
-        DEBUG_SHOW(scratches, 'scratches', true);
-        
-        
-        
-        
         % plot the lines
-        figure, imshow(img), hold on
+        figure, himg = imshow(img, 'Border', 'tight'), hold on
         max_len = 0;
         for k = 1:length(lines)
             xy = [lines(k).point1; lines(k).point2];
@@ -134,11 +120,29 @@ smooth_img = img;
                  xy_long = xy;
             end
         end
-
-
-
-        out = scratches;
+        %set(gca,'position',[0 0 1 1],'units','normalized')
+        %saveas(himg, 'result/hough.tif');
         
+        %%% next step~~
+        DEBUG_SHOW(sharpImg > 0.1, 'sharpimg', true);
+
+        % find precise scratch direction using globle direction
+        %lines = refine_direction(lines, P, hough_input);
+        [lines, imgId, imgs] = refine_direction(lines, P, sharpImg > binary_threshold);
+      
+        scratches = find_scratch(lines, img, sharpImg > binary_threshold, imgId, imgs);
+        
+        %SE1 = strel('ball',1,1);
+        %SE2 = strel('ball',5,5);
+        %scratches = imdilate(imclose(scratches, SE1), SE2);
+        DEBUG_SHOW(scratches, 'scratches', true);
+        
+        
+        
+        
+        se = strel('disk', 1); 
+        out = imdilate(scratches ~= 0, se);
+        out  = scratches;
 
 end
     
@@ -148,6 +152,7 @@ end
 
     
 function DEBUG_SHOW(img, varargin)
+%{
     %figure
 	img = normalize_image(img);
 	
@@ -164,4 +169,12 @@ function DEBUG_SHOW(img, varargin)
 		title(varargin{1})
     end
 	waitforbuttonpress
+%}
 end
+
+
+
+function save_tmp_image(img, dir, filename, vicename)
+    imwrite(img, strcat(dir, filename, '_', vicename,'.jpg'), 'jpg');
+end
+

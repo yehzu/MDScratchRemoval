@@ -1,4 +1,4 @@
-function out = find_scratch(lines, img, sharpImg)
+function out = find_scratch(lines, img, sharpImg, imgId, imgs)
 fprintf(1, 'find_scratch\n');
 distance_constraint = 10;
 stack_size = 1000;
@@ -27,8 +27,11 @@ for line_id = 1:num_lines
     dir = (p2 - p1) / norm(p2 - p1);
     normal = [dir(2), -dir(1)];
     
-	last_p = zeros(2, 1);
+	last_p = zeros(1, 2);
     p = p1;
+    
+    currid = imgId(line_id);
+    sharpImg = imgs(:, :, currid);
     while norm(p - p2) > 1
         pset = extend_scratch_width(round(p), normal, scratch_width, sharpImg); % find nearest 5 pixels
         for pt = 1:length(pset)
@@ -36,36 +39,41 @@ for line_id = 1:num_lines
                 if sharpImg(pset(pt, 2), pset(pt, 1)) == On
 					
                     [scratches len sharpImg] = grow_scratch(pset(pt, :), dir, sharpImg); % find scartch and update sharpImg
-                    scratches
-                    if len > 1
+                    scratches;
+                    if len > 3
 						point_stack(ps_size + 1: ps_size + size(scratches, 1), :) = scratches;
 						ps_size = ps_size + size(scratches, 1);
-
-						if sum(last_p) ~= 0 && norm(last_p - pset(pt, :)) < gap_size
+                      
+                        sdir = (last_p - pset(3, :)) / norm(last_p - pset(3, :));
+                        ang = acos(sdir * dir');
+                        
+						if sum(last_p) ~= 0 && (ang < pi / 180 * 15 || ang > pi - pi / 180 * 15 ) && norm(last_p - pset(3, :)) < gap_size
 							intensity = zeros(ps_size, 1);
 							
+                            % calculate the scratch intensity
 							for i = 1:ps_size
 								intensity(i) = img(point_stack(i, 2), point_stack(i, 1));
 							end
 							vi = var(intensity);
 							mi = mean(intensity);
-							
-							nor = norm(last_p - pset(pt, :));
+							% ----
+                            
+                            nor = norm(last_p - pset(pt, :));
 
-							pt1 = round(linspace(last_p(1), pset(pt, 1), nor))
-							pt2 = round(linspace(last_p(2), pset(pt, 2), nor))
+							pt1 = round(linspace(last_p(1), pset(pt, 1), nor + 1));
+							pt2 = round(linspace(last_p(2), pset(pt, 2), nor + 1));
 							
 							for i = 1:length(pt1)
-								patch_j = pt1 - fill_gap_nbr:pt1 + fill_gap_nbr;
-								patch_i = pt2 - fill_gap_nbr:pt2 + fill_gap_nbr;
+								patch_j = pt1(i) - fill_gap_nbr:pt1(i) + fill_gap_nbr;
+								patch_i = pt2(i) - fill_gap_nbr:pt2(i) + fill_gap_nbr;
 
 								for idx_i = 1: length(patch_i)
 									for idx_j = 1: length(patch_j)
 										if patch_j(idx_j) < 1 || patch_i(idx_i) < 1 || patch_j(idx_j) > N || patch_i(idx_i) > M
 											continue
 										end
-										if abs(img(patch_i(idx_i), patch_j(idx_j)) - mi) < 2* vi
-											%fprintf(1, 'fill scratch\n');
+										if abs(img(patch_i(idx_i), patch_j(idx_j)) - mi) <= 1 * vi
+											fprintf(1, 'fill scratch\n');
 											point_stack(ps_size + 1, :) = [patch_j(idx_j), patch_i(idx_i)];
 											ps_size = ps_size + 1;
 										end
@@ -75,6 +83,7 @@ for line_id = 1:num_lines
 							end
 							
 						end
+                        
 						last_p = scratches(end, :);
 					end
          %       end

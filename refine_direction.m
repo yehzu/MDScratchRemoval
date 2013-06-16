@@ -1,10 +1,13 @@
-function outlines = refine_direction(lines, para, sharpImg)
+function [outlines, imgId, imgs] = refine_direction(lines, para, sharpImg)
 	% back up of sharpImg
 	origin = sharpImg;
 	partitions = 5;
 	max_scratch_num = 6;
 	outlines = [];
-    para_dist = 5;
+    imgId = [];
+    para_dist = 10;
+    imgs = zeros(size(sharpImg, 1), size(sharpImg, 2), length(lines) * (partitions-1));
+    
 	for line_id = 1:length(lines)   
 		p1 = lines(line_id).point1;
     	p2 = lines(line_id).point2;
@@ -14,7 +17,8 @@ function outlines = refine_direction(lines, para, sharpImg)
 
     	for part = 1:partitions-1
     		conditioned_map = ROI_of_partition(sharpImg, pt(:, part), pt(:, part + 1));
-
+            imgs(:, :, (line_id - 1) * (partitions - 1) + part) = conditioned_map;
+            
     		[h_img, theta, rho] = hough(conditioned_map);
     		P = houghpeaks(h_img, max_scratch_num, 'threshold', ceil(0.7 * max(h_img(:))));
     		l = houghlines(sharpImg, theta, rho, P, 'FillGap', 100, 'MinLength', 7);
@@ -31,12 +35,35 @@ function outlines = refine_direction(lines, para, sharpImg)
     		for sub_lines = 1:length(l)
     			sp1 = l(sub_lines).point1;
     			sp2 = l(sub_lines).point2;
-    			sdir = (sp1 - sp2) / norm(sp1 - sp2)
-    			dir
-    			ang = acos(sdir * dir')
-    			if ang < pi / 180 * 20 || ang > pi - pi / 180 * 20 
-    				ang = acos(sdir * dir')
+    			sdir = (sp1 - sp2) / norm(sp1 - sp2);
+    			ang = acos(sdir * dir');
+                
+                dvec = (sp1 - p1);
+                dis = dvec - (dvec * dir') * dir;
+                
+    			if (ang < pi / 180 * 15 || ang > pi - pi / 180 * 15 ) &&  norm(dis) < para_dist
+                    %ang = acos(sdir * dir');
+                    %{
+                    figure, imshow(ROI_of_partition(sharpImg, pt(:, part), pt(:, part + 1))), hold on
+                    max_len = 0;
+                    xy = [l(sub_lines).point1; l(sub_lines).point2];
+                    plot(xy(:,1),xy(:,2),'LineWidth',1,'Color','green');
+
+                    % Plot beginnings and ends of lines
+                    plot(xy(1,1),xy(1,2),'x','LineWidth',1,'Color','yellow');
+                    plot(xy(2,1),xy(2,2),'x','LineWidth',1,'Color','red');
+
+                    % Determine the endpoints of the longest line segment
+                    len = norm(l(sub_lines).point1 - l(sub_lines).point2);
+                    if (len > max_len)
+                        max_len = len;
+                        xy_long = xy;
+                    end
+                    waitforbuttonpress
+                    %}
+    				%ang = acos(sdir * dir');
     				outlines = [outlines l(sub_lines)];
+                    imgId = [imgId, (line_id - 1) * (partitions - 1) + part];
     			end
 
     		end
@@ -73,6 +100,8 @@ end
 
 %% ROI_of_partition: function description
 function [img] = ROI_of_partition(sharpImg, pt1, pt2)
+    neighbor_size = 30;
+
 	[M N] = size(sharpImg);
 	dir = (pt1 - pt2) / norm(pt1 - pt2);
 	img = sharpImg;
@@ -82,14 +111,16 @@ function [img] = ROI_of_partition(sharpImg, pt1, pt2)
 	mm = mm - pt2(2);
 
 	innerprod = nn.*dir(1) + mm .* dir(2);
-
+    diff = sqrt( (nn - innerprod .* dir(1)).^2 + (mm - innerprod .* dir(2)).^2);
+    
 	cond1 = innerprod > norm(pt1 - pt2);
 	cond2 = innerprod < 0;
+    cond3 = diff > neighbor_size;
+	img( cond1 + cond2 + cond3 > 0) = 0;
 
-	img( cond1 + cond2 > 0) = 0;
-
-	%{
-	imshow(img);
-	waitforbuttonpress
-	%}
+	
+	
+    %imshow(img);
+	%waitforbuttonpress
+	
 end
