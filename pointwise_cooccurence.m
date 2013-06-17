@@ -5,10 +5,18 @@ function out = pointwise_cooccurence(img, nbrsize)
 if max(img(:)) > 1
     img = double(img) / 255;
 end
+out = ones(size(img));
+
+
+for times = 1:2
+
+if times == 2
+   img = img'; 
+end
+
 
 [M, N] = size(img);
 
-out = zeros(M, N);
 
 k = 1;
 
@@ -135,7 +143,17 @@ for i = 1:k
 end
 %}
 id = selectFromClasses(cent, nbrsize)
-out(idx ~= id) = 1;
+if times == 1
+out(idx == id) = 0;
+else
+   out = out';
+   out(idx == id) = 0;
+   out = out';
+end
+imshow(out)
+waitforbuttonpress
+end
+
 
 end
 
@@ -148,7 +166,7 @@ function id = selectFromClasses(cent, nbrsize)
     len = 2 * nbrsize + 1;
     scratch_width = 4; % mostly, a scratch's width is about 4 px
     range = [len len * sqrt(2)] * 2/3; % possible scratch len range
-    approx_black_area = mean(- scratch_width * range + len ^ 2)
+    approx_black_area = mean(- scratch_width * range + len ^ 2);
     
     candidate = zeros(4, 1);
     
@@ -162,7 +180,7 @@ function id = selectFromClasses(cent, nbrsize)
     end
     num_c = num_c - 1;
 
-    candidate
+    candidate;
     if num_c == 0
         fprintf(1, 'no candidate....');
 		
@@ -174,7 +192,7 @@ function id = selectFromClasses(cent, nbrsize)
     end
    
     % check 0-0 and 1-1 pair 
-    dist = abs(cent(candidate(1:num_c), 1) - approx_black_area)
+    dist = abs(cent(candidate(1:num_c), 1) - approx_black_area);
     mdist = min(dist);
     i = find(dist==mdist(1));
     id = candidate(i);

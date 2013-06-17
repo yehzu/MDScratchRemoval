@@ -3,6 +3,7 @@ function [outlines, imgId, imgs] = refine_direction(lines, para, sharpImg)
 	origin = sharpImg;
 	partitions = 5;
 	max_scratch_num = 6;
+    tolerable_angle = 20;
 	outlines = [];
     imgId = [];
     para_dist = 10;
@@ -41,7 +42,7 @@ function [outlines, imgId, imgs] = refine_direction(lines, para, sharpImg)
                 dvec = (sp1 - p1);
                 dis = dvec - (dvec * dir') * dir;
                 
-    			if (ang < pi / 180 * 15 || ang > pi - pi / 180 * 15 ) &&  norm(dis) < para_dist
+    			if (ang < pi / 180 * tolerable_angle || ang > pi - pi / 180 * tolerable_angle ) &&  norm(dis) < para_dist
                     %ang = acos(sdir * dir');
                     %{
                     figure, imshow(ROI_of_partition(sharpImg, pt(:, part), pt(:, part + 1))), hold on

@@ -1,5 +1,6 @@
 function out = find_scratch(lines, img, sharpImg, imgId, imgs)
 fprintf(1, 'find_scratch\n');
+
 distance_constraint = 10;
 stack_size = 1000;
 cross_correlation_nbr = 5;
@@ -8,8 +9,9 @@ min_total_scratch_pixel = 100;
 On = 1;
 Visited = 0.5;
 scratch_width = 5;
-gap_size = 10;
-fill_gap_nbr = 3;
+gap_size = 20;
+fill_gap_nbr = 2;
+min_scratch_len = 6;
 
 num_lines = length(lines);
 [M, N] = size(img);
@@ -20,11 +22,71 @@ ps_size = 0;
 
 max_connected_component_num = -inf;
 
-
+for search_dir = [-1 1] % two direction
 for line_id = 1:num_lines
     p1 = lines(line_id).point1;
     p2 = lines(line_id).point2;
     dir = (p2 - p1) / norm(p2 - p1);
+    
+    % the direction and the search direction
+    if abs(dir(1)) > abs(dir(2)) % mode 1
+       if search_dir == 1
+          if dir(1) < 0
+             tmp = p1;
+             p1 = p2;
+             p2 = tmp;
+             dir = -dir;
+          end
+          
+       else
+          if dir(1) > 0
+             tmp = p1;
+             p1 = p2;
+             p2 = tmp;
+             dir = -dir;
+          end
+       end
+        
+    else
+        if search_dir == 1
+		  if dir(2) < 0
+             tmp = p1;
+             p1 = p2;
+             p2 = tmp;
+             dir = -dir;
+           end
+        else
+		   if dir(2) > 0
+			 tmp = p1;
+             p1 = p2;
+             p2 = tmp;
+             dir = -dir;
+           end
+        end
+    end
+    
+    
+    %{
+    if dir(2) > 0
+       if search_dir == 1
+        % not same direction
+     
+           tmp = p1;
+           p1 = p2;
+           p2 = tmp;
+           dir = -dir;
+       end
+    else
+        if search_dir == -1
+            tmp = p1;
+           p1 = p2;
+           p2 = tmp;
+           dir = -dir;
+        
+        end
+        
+    end
+    %}
     normal = [dir(2), -dir(1)];
     
 	last_p = zeros(1, 2);
@@ -38,9 +100,10 @@ for line_id = 1:num_lines
 		%	if sharpImg(round(p(2)), round(p(1))) == On
                 if sharpImg(pset(pt, 2), pset(pt, 1)) == On
 					
-                    [scratches len sharpImg] = grow_scratch(pset(pt, :), dir, sharpImg); % find scartch and update sharpImg
-                    scratches;
-                    if len > 3
+                    [scratches len sharpImg] = grow_scratch(pset(pt, :), dir, sharpImg, search_dir); % find scartch and update sharpImg
+                    
+                    scratches
+                    if len > min_scratch_len
 						point_stack(ps_size + 1: ps_size + size(scratches, 1), :) = scratches;
 						ps_size = ps_size + size(scratches, 1);
                       
@@ -66,14 +129,16 @@ for line_id = 1:num_lines
 							for i = 1:length(pt1)
 								patch_j = pt1(i) - fill_gap_nbr:pt1(i) + fill_gap_nbr;
 								patch_i = pt2(i) - fill_gap_nbr:pt2(i) + fill_gap_nbr;
-
+                                
 								for idx_i = 1: length(patch_i)
 									for idx_j = 1: length(patch_j)
-										if patch_j(idx_j) < 1 || patch_i(idx_i) < 1 || patch_j(idx_j) > N || patch_i(idx_i) > M
+										if patch_j(idx_j) < 1 || patch_i(idx_i) < 1 || patch_j(idx_j) > N || patch_i(idx_i) > M || ...
+                                           sqrt( (patch_j(idx_j)-pt1(i))^2 + (patch_i(idx_i) - pt2(i))^2) > fill_gap_nbr
 											continue
-										end
+                                        end
+                                        
 										if abs(img(patch_i(idx_i), patch_j(idx_j)) - mi) <= 1 * vi
-											fprintf(1, 'fill scratch\n');
+										%	fprintf(1, 'fill scratch\n');
 											point_stack(ps_size + 1, :) = [patch_j(idx_j), patch_i(idx_i)];
 											ps_size = ps_size + 1;
 										end
@@ -92,11 +157,16 @@ for line_id = 1:num_lines
         p = p + dir;
     end
     % len = [0:1:norm(p2 - p1), norm(p2 - p1)]; % small bug (twice norm(p2 - p1))
-    
+    imshow(sharpImg)
+    waitforbuttonpress
 end
+end
+
 for pt = 1:ps_size	
 	out(point_stack(pt, 2), point_stack(pt, 1)) = 1;
 end
+
+
 end
 
 %% extend_scratch_width: according the first p to border the scratch
@@ -114,7 +184,7 @@ end
 end
 
 %% grow_scratch: according the first p to grow the whole scratch
-function [scratches, maxlen, sharpImg] = grow_scratch(p, dir, sharpImg)
+function [scratches, maxlen, sharpImg] = grow_scratch(p, dir, sharpImg, search_dir)
 %fprintf(1, 'grow_scratch\n');
 % parameters
 sharpImg = double(sharpImg);
@@ -132,33 +202,56 @@ n_ps = 0;
 %n_ds = 0;
 
 mode = 0;
-if dir(1) > dir(2)
+if abs(dir(1)) > abs(dir(2))
     mode = 1;
     tdir = dir / dir(1);
 else
     mode = 2;
     tdir = dir / dir(2);
 end
+% tdir
+% dir
+% waitforbuttonpress
 
 % main loop
 no_scratch = false;
 maxlen = 0;
+
 while true
     sharpImg(round(p(2)), round(p(1))) = Visited;
-	maxlen = maxlen + 1;
+	
 	%imshow(sharpImg)
     %waitforbuttonpress
 
     n_ps = n_ps + 1;
     scratches(n_ps, :) = round(p);
     
+    if mode == 1
+        np1p = round([p(1), p(2) + 1]);
+        np1m = round([p(1), p(2) - 1]);
+    else
+        np1p = round([p(1) + 1, p(2)]);
+        np1m = round([p(1) - 1, p(2)]);
+    end
+    
+    % add adjecent pixels
+    if sum(np1p < 1) < 1 && np1p(2) < size(sharpImg, 1) && np1p(1) < size(sharpImg, 2) && sharpImg(np1p(2), np1p(1)) == On
+        n_ps = n_ps + 1;
+        scratches(n_ps, :) = round(np1p);
+    end
+    if sum(np1m < 1) < 1 && np1m(2) < size(sharpImg, 1) && np1m(1) < size(sharpImg, 2) && sharpImg(np1m(2), np1m(1)) == On
+        n_ps = n_ps + 1;
+        scratches(n_ps, :) = round(np1m);
+    end
+
+    
     test = 0;
     % find next point
     while true
         if mode == 1
-            np = [p(1) + 1 ,p(2) + dir(2)];
+            np = [p(1) + search_dir, p(2) + search_dir * dir(2)];
         else
-            np = [p(1) + dir(1) ,p(2) + 1];
+            np = [p(1) + search_dir * dir(1), p(2) + search_dir];
         end
         
         rnp = round(np);
@@ -170,11 +263,11 @@ while true
         else
             
             if mode == 1
-                np1 = [np(1), np(2)+1];
-                np2 = [np(1), np(2)-1];
+                np1 = [np(1), np(2) + 1];
+                np2 = [np(1), np(2) - 1];
             else
-                np1 = [np(1)+1, np(2)];
-                np2 = [np(1)-1, np(2)];
+                np1 = [np(1) + 1, np(2)];
+                np2 = [np(1) - 1, np(2)];
             end
             
             rnp1 = round(np1);
@@ -208,4 +301,6 @@ while true
         
     end % end while
 	scratches = scratches(1:n_ps, :);
+    
+    maxlen = norm(scratches(1, :) - scratches(n_ps, :));
 end % end func

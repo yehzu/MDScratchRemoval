@@ -17,7 +17,6 @@ end
 
 
 
-
 % needs to be tuned
 max_scratch_num = 6;
 scratch_threshold = 50;
@@ -121,7 +120,7 @@ smooth_img = img;
             end
         end
         %set(gca,'position',[0 0 1 1],'units','normalized')
-        %saveas(himg, 'result/hough.tif');
+        saveas(himg, 'result/hough.tif');
         
         %%% next step~~
         DEBUG_SHOW(sharpImg > 0.1, 'sharpimg', true);
@@ -175,6 +174,6 @@ end
 
 
 function save_tmp_image(img, dir, filename, vicename)
-    imwrite(img, strcat(dir, filename, '_', vicename,'.jpg'), 'jpg');
+    imwrite(img, strcat(dir, filename, '_', vicename,'.bmp'), 'bmp');
 end
 
